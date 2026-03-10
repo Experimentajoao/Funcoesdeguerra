@@ -36,6 +36,7 @@
 
         .controls-info { display: flex; justify-content: space-between; width: 800px; margin-top: 10px; color: #aaa; font-size: 0.85rem; background: rgba(20,20,30,0.8); padding: 8px 20px; border-radius: 8px; box-sizing: border-box; border: 1px solid #333; }
         .controls-info b { color: #fff; }
+
 <link rel="manifest" href="manifest.json">
 
 <script>
@@ -47,6 +48,12 @@
     </style>
 </head>
 <body>
+
+<button id="botaoInstalar" style="display: block; background: #0078D7; color: white; padding: 15px; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 20px auto;">
+  📥 Instalar Simulador (Offline)
+</button>
+
+
 
     <div class="top-bar">
         <h1>Math-Brawlers</h1>
@@ -381,6 +388,32 @@
     }
 
     gameLoop();
+
+let eventoInstalacao;
+const botao = document.getElementById('botaoInstalar');
+
+// O navegador avisa que o sistema (Windows/Android) aceita instalar
+window.addEventListener('beforeinstallprompt', (evento) => {
+  evento.preventDefault(); 
+  eventoInstalacao = evento; 
+  botao.style.display = 'block'; // O botão fica visível para o cliente
+});
+
+// O que acontece quando o cliente clica no botão
+botao.addEventListener('click', () => {
+  if (eventoInstalacao) {
+    eventoInstalacao.prompt(); // Abre a janela de instalação do Windows/Android
+    
+    eventoInstalacao.userChoice.then((escolha) => {
+      if (escolha.outcome === 'accepted') {
+        botao.style.display = 'none'; // Esconde o botão após instalar
+      }
+      eventoInstalacao = null;
+    });
+  }
+});
+
+
 </script>
 
 </body>
