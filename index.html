@@ -37,6 +37,14 @@
         .controls-info { display: flex; justify-content: space-between; width: 800px; margin-top: 10px; color: #aaa; font-size: 0.85rem; background: rgba(20,20,30,0.8); padding: 8px 20px; border-radius: 8px; box-sizing: border-box; border: 1px solid #333; }
         .controls-info b { color: #fff; }
 
+        #game-wrapper { display: flex; flex-direction: column; align-items: center; }
+        #game-wrapper:fullscreen, #game-wrapper:-webkit-full-screen {
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; background: #050509;
+        }
+        #btn-fullscreen { background: transparent; border: 1px solid #555; color: #aaa; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 1.1rem; transition: all 0.2s; line-height: 1; }
+        #btn-fullscreen:hover { border-color: #4CAF50; color: #4CAF50; }
+
 <link rel="manifest" href="manifest.json">
 
 <script>
@@ -55,11 +63,13 @@
 
 
 
+    <div id="game-wrapper">
     <div class="top-bar">
         <h1>Math-Brawlers</h1>
         <div id="stageNameDisplay">1. Planície Aberta</div>
+        <button id="btn-fullscreen" title="Tela cheia">⛶</button>
     </div>
-    
+
     <div id="scoreboard">
         <div class="p1-score">AZUL: <span id="score1">0</span></div>
         <div class="match-info">Melhor de 5<span>Primeiro a 3</span></div>
@@ -77,6 +87,7 @@
     <div class="controls-info">
         <div><b>P1:</b> [W, A, D] Move | [Espaço] Atira</div>
         <div><b>P2:</b> [Setas] Move | [Enter] Atira</div>
+    </div>
     </div>
 
 <script>
@@ -450,6 +461,39 @@ botao.addEventListener('click', () => {
   }
 });
 
+// --- TELA CHEIA ---
+const btnFullscreen = document.getElementById('btn-fullscreen');
+const gameWrapper = document.getElementById('game-wrapper');
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (gameWrapper.requestFullscreen) gameWrapper.requestFullscreen();
+        else if (gameWrapper.webkitRequestFullscreen) gameWrapper.webkitRequestFullscreen();
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+}
+
+btnFullscreen.addEventListener('click', toggleFullscreen);
+
+function onFullscreenChange() {
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (isFullscreen) {
+        btnFullscreen.textContent = '✕';
+        btnFullscreen.title = 'Sair da tela cheia';
+        const scale = Math.min(gameWrapper.clientWidth / 820, gameWrapper.clientHeight / 690) * 0.96;
+        gameWrapper.style.transform = `scale(${scale})`;
+        gameWrapper.style.transformOrigin = 'center center';
+    } else {
+        btnFullscreen.textContent = '⛶';
+        btnFullscreen.title = 'Tela cheia';
+        gameWrapper.style.transform = '';
+    }
+}
+
+document.addEventListener('fullscreenchange', onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
 </script>
 
