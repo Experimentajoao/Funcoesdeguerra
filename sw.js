@@ -1,26 +1,29 @@
-const cacheName = 'simulador-v1';
+const cacheName = 'simulador-v2';
 const assets = [
   './',
   './index.html',
-  './estilo.css',
   './script.js',
-  './icone.png'
+  './manifest.json'
 ];
 
-// Instala e faz o cache dos arquivos
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(cacheName).then(cache => {
-      return cache.addAll(assets);
-    })
+    caches.open(cacheName).then(cache => cache.addAll(assets))
   );
+  self.skipWaiting();
 });
 
-// Responde com o cache mesmo offline
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== cacheName).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+});
+
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(res => {
-      return res || fetch(e.request);
-    })
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
