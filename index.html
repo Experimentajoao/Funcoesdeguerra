@@ -115,6 +115,34 @@
                 { x: 150, y: 220, width: 80, height: 20 },
                 { x: 570, y: 220, width: 80, height: 20 }
             ]
+        },
+        {
+            id: 4, name: "5. Ponte Suspensa",
+            player1Start: { x: 50, y: 400 }, player2Start: { x: 700, y: 400 },
+            obstacles: [
+                { x: 100, y: 350, width: 120, height: 15 },
+                { x: 580, y: 350, width: 120, height: 15 },
+                { x: 300, y: 290, width: 200, height: 15 },
+                { x: 200, y: 220, width: 60, height: 15 },
+                { x: 540, y: 220, width: 60, height: 15 },
+                { x: 360, y: 160, width: 80, height: 15 }
+            ]
+        },
+        {
+            id: 5, name: "6. Arsenal de Funções",
+            player1Start: { x: 150, y: 400 }, player2Start: { x: 600, y: 400 },
+            obstacles: [
+                { x: 340, y: 340, width: 120, height: 20 },
+                { x: 130, y: 260, width: 100, height: 15 },
+                { x: 570, y: 260, width: 100, height: 15 },
+                { x: 340, y: 180, width: 120, height: 15 }
+            ],
+            cannons: [
+                { x: 0, y: 160, dir: 1, interval: 3000 },
+                { x: 770, y: 300, dir: -1, interval: 2500 },
+                { x: 0, y: 380, dir: 1, interval: 3500 },
+                { x: 770, y: 120, dir: -1, interval: 4000 }
+            ]
         }
     ];
 
@@ -243,9 +271,13 @@
     const p2 = new Player(2, '#ef4444', { left: 'ArrowLeft', right: 'ArrowRight', jump: 'ArrowUp', shoot: 'Enter' });
 
     let lasers = []; let bubbles = [];
+    let cannonLasers = [];
+    let lastCannonShots = {};
 
     function resetRound() {
         lasers = []; bubbles = [];
+        cannonLasers = [];
+        lastCannonShots = {};
         p1.resetState(); p2.resetState();
     }
 
@@ -297,6 +329,77 @@
         lasers.push({ x: startX, y: startY, startX: startX, startY: startY, mathX: 0, dir: player.facingRight ? 1 : -1, type: player.currentFunc, owner: player.id, color: player.color, trail: [] });
     }
 
+    // --- SISTEMA DE CANHÕES DA FASE ---
+    function updateCannons() {
+        if (!currentStage.cannons) return;
+        const now = Date.now();
+        currentStage.cannons.forEach((cannon, i) => {
+            if (!lastCannonShots[i]) lastCannonShots[i] = now;
+            if (now - lastCannonShots[i] >= cannon.interval) {
+                lastCannonShots[i] = now;
+                const func = functionsDB[Math.floor(Math.random() * functionsDB.length)];
+                let startX = cannon.dir === 1 ? cannon.x + 40 : cannon.x - 10;
+                cannonLasers.push({
+                    x: startX, y: cannon.y + 10,
+                    startX: startX, startY: cannon.y + 10,
+                    mathX: 0, dir: cannon.dir,
+                    type: func.type, color: func.color,
+                    label: func.label, trail: []
+                });
+            }
+        });
+    }
+
+    function drawCannons() {
+        if (!currentStage.cannons) return;
+        currentStage.cannons.forEach(cannon => {
+            ctx.save();
+            // Base do canhão
+            ctx.fillStyle = '#4a3728';
+            ctx.beginPath();
+            ctx.arc(cannon.dir === 1 ? cannon.x + 12 : cannon.x + 18, cannon.y + 20, 14, 0, Math.PI * 2);
+            ctx.fill();
+            // Roda
+            ctx.fillStyle = '#2a1f14';
+            ctx.beginPath();
+            ctx.arc(cannon.dir === 1 ? cannon.x + 12 : cannon.x + 18, cannon.y + 20, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#6b4c2a'; ctx.lineWidth = 2;
+            ctx.stroke();
+            // Corpo do canhão
+            ctx.fillStyle = '#555';
+            ctx.beginPath();
+            if (cannon.dir === 1) {
+                ctx.roundRect(cannon.x, cannon.y + 4, 30, 16, 3);
+            } else {
+                ctx.roundRect(cannon.x, cannon.y + 4, 30, 16, 3);
+            }
+            ctx.fill();
+            ctx.strokeStyle = '#777'; ctx.lineWidth = 1; ctx.stroke();
+            // Cano
+            ctx.fillStyle = '#666';
+            if (cannon.dir === 1) {
+                ctx.fillRect(cannon.x + 25, cannon.y + 7, 20, 10);
+                ctx.fillStyle = '#444';
+                ctx.fillRect(cannon.x + 42, cannon.y + 5, 6, 14);
+            } else {
+                ctx.fillRect(cannon.x - 15, cannon.y + 7, 20, 10);
+                ctx.fillStyle = '#444';
+                ctx.fillRect(cannon.x - 18, cannon.y + 5, 6, 14);
+            }
+            // Brilho indicador (pulsa)
+            let pulse = Math.sin(Date.now() * 0.005) * 0.5 + 0.5;
+            ctx.fillStyle = `rgba(255, 107, 53, ${0.3 + pulse * 0.7})`;
+            ctx.beginPath();
+            ctx.arc(cannon.dir === 1 ? cannon.x + 45 : cannon.x - 15, cannon.y + 12, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 8; ctx.shadowColor = '#ff6b35';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        });
+    }
+
     function checkCollisions() {
         bubbles.forEach((b, bIndex) => {
             [p1, p2].forEach(p => {
@@ -325,10 +428,22 @@
 
             currentStage.obstacles.forEach(obs => {
                 if (l.x > obs.x && l.x < obs.x + obs.width && l.y > obs.y && l.y < obs.y + obs.height) {
-                    lasers.splice(lIndex, 1); 
+                    lasers.splice(lIndex, 1);
                 }
             });
         });
+
+        // Colisão dos projéteis de canhão com jogadores (reseta round sem pontuar)
+        for (let i = cannonLasers.length - 1; i >= 0; i--) {
+            let cl = cannonLasers[i];
+            [p1, p2].forEach(p => {
+                if (cl && cl.x > p.x && cl.x < p.x + p.width && cl.y > p.y && cl.y < p.y + p.height) {
+                    cannonLasers.splice(i, 1);
+                    ctx.fillStyle = 'rgba(255,107,53,0.5)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                    resetRound();
+                }
+            });
+        }
     }
 
     function gameLoop() {
@@ -343,9 +458,13 @@
             ctx.fillStyle = '#10b981'; ctx.fillRect(obs.x, obs.y, obs.width, 3);
         });
 
+        // Desenhar canhões da fase
+        drawCannons();
+
         if (!isTransitioning) {
             p1.update();
             p2.update();
+            updateCannons();
         }
         p1.draw();
         p2.draw();
@@ -389,6 +508,48 @@
             if (l.y > FLOOR_Y || l.x < 0 || l.x > canvas.width) {
                 lasers.splice(index, 1);
             }
+        });
+
+        // Projéteis dos canhões da fase
+        cannonLasers.forEach((cl, index) => {
+            if (!isTransitioning) {
+                cl.mathX += 0.5;
+                let mathY = 0;
+                if (cl.type === 'linear') mathY = 0;
+                else if (cl.type === 'quadratic') mathY = -0.015 * Math.pow(cl.mathX, 2) + (0.6 * cl.mathX);
+                else if (cl.type === 'sine') mathY = Math.sin(cl.mathX * 1.5) * 0.8;
+
+                cl.x = cl.startX + (cl.mathX * 12 * cl.dir);
+                cl.y = cl.startY - (mathY * 12);
+                cl.trail.push({ x: cl.x, y: cl.y });
+                if (cl.trail.length > 30) cl.trail.shift();
+            }
+
+            // Rastro do projétil de canhão (laranja pulsante)
+            ctx.shadowBlur = 8; ctx.shadowColor = '#ff6b35';
+            ctx.beginPath();
+            if (cl.trail.length > 0) ctx.moveTo(cl.trail[0].x, cl.trail[0].y);
+            for (let i = 1; i < cl.trail.length; i++) ctx.lineTo(cl.trail[i].x, cl.trail[i].y);
+            ctx.strokeStyle = cl.color; ctx.lineWidth = 3; ctx.globalAlpha = 0.7; ctx.stroke(); ctx.globalAlpha = 1.0;
+            // Bola do projétil
+            ctx.beginPath(); ctx.arc(cl.x, cl.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff6b35'; ctx.fill();
+            ctx.shadowBlur = 0;
+            // Label da função no projétil
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+            ctx.fillText(cl.label, cl.x, cl.y - 10);
+
+            // Remover se saiu da tela ou bateu no chão
+            if (cl.y > FLOOR_Y || cl.x < -20 || cl.x > canvas.width + 20 || cl.y < -20) {
+                cannonLasers.splice(index, 1);
+            }
+
+            // Destruir ao bater em obstáculos
+            currentStage.obstacles.forEach(obs => {
+                if (cl.x > obs.x && cl.x < obs.x + obs.width && cl.y > obs.y && cl.y < obs.y + obs.height) {
+                    cannonLasers.splice(index, 1);
+                }
+            });
         });
 
         if (!isTransitioning) {
